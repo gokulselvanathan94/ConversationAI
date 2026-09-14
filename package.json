@@ -1,0 +1,29 @@
+{
+  "name": "ceo-conversation-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted conversational AI phone assistant for a CEO: answers calls from your carrier, screens callers, books meetings, and hands calls into Genesys Cloud via a BYOC Cloud trunk only when a human is needed.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/src/index.js",
+    "dev": "tsx watch src/index.ts",
+    "chat": "tsx scripts/chat.ts",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "dotenv": "^17.4.2",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
