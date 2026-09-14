@@ -1,11 +1,11 @@
 import type { Session, WsClient } from '@jambonz/sdk/websocket';
 import type { AppConfig } from '../config.js';
 import type { CalendarProvider } from '../calendar/index.js';
-import { CallAgent } from '../agent/engine.js';
+import { createEngine, type ConversationEngine } from '../agent/index.js';
 import { createLogger, type Logger } from '../logger.js';
 import { ContextStore } from './context-store.js';
 import { encodeUuiHex } from './uui.js';
-import { appendCallRecord, flattenHistory } from './call-log.js';
+import { appendCallRecord } from './call-log.js';
 
 /** Seconds of caller silence before we re-prompt. */
 const NO_INPUT_TIMEOUT_S = 10;
@@ -51,7 +51,7 @@ export function attachAssistant(
 }
 
 class AssistantCall {
-  private readonly agent: CallAgent;
+  private readonly agent: ConversationEngine;
   private readonly log: Logger;
   private readonly callerNumber?: string;
   private readonly startedAtIso = new Date().toISOString();
@@ -70,7 +70,7 @@ class AssistantCall {
   ) {
     this.callerNumber = session.data.sip?.callingNumber || session.from || undefined;
     this.log = createLogger('call').child(session.callSid);
-    this.agent = new CallAgent(cfg, calendar, {
+    this.agent = createEngine(cfg, calendar, {
       callerNumber: this.callerNumber,
       startedAtIso: this.startedAtIso,
     });
@@ -209,7 +209,7 @@ class AssistantCall {
       summary,
       urgency,
       bookedTime,
-      transcript: flattenHistory(this.agent.history),
+      transcript: this.agent.transcript(),
       createdAtIso: new Date().toISOString(),
     });
     const uui = encodeUuiHex(token, this.cfg.genesys.uuiProtocolDiscriminator);
@@ -271,7 +271,7 @@ class AssistantCall {
           : outcome.type,
       summary: outcome.type !== 'in_progress' ? outcome.summary : undefined,
       bookedTime: outcome.type !== 'in_progress' ? outcome.booking?.speakableTime : undefined,
-      transcript: flattenHistory(this.agent.history),
+      transcript: this.agent.transcript(),
     };
     this.log.info('call ended', { outcome: record.outcome });
     await appendCallRecord(this.cfg.server.callLogDir, record);

@@ -59,10 +59,38 @@ Genesys bridge.
 Every call writes a JSONL transcript to `call-logs/` (bot-handled legs are
 invisible to Genesys, so this is the system of record).
 
+## Choosing the AI (including your own self-hosted model)
+
+The conversation engine is pluggable via `LLM_PROVIDER`:
+
+- `anthropic` (default) — Claude via the Anthropic API.
+- `openai` — the OpenAI API **or any OpenAI-compatible server**, which is
+  how you run *your own* model. Examples:
+
+  ```bash
+  # Your own open-weight model on your own GPU box via Ollama:
+  LLM_PROVIDER=openai
+  OPENAI_BASE_URL=http://gpu-host:11434/v1   # vLLM: http://gpu-host:8000/v1
+  OPENAI_MODEL=qwen2.5:32b                    # or llama3.3:70b, gpt-oss:20b, ...
+
+  # OpenAI's hosted models:
+  LLM_PROVIDER=openai
+  OPENAI_API_KEY=sk-...
+  OPENAI_MODEL=gpt-4.1-mini
+  ```
+
+Both engines share the same system prompt, the same three tools
+(`check_availability`, `book_meeting`, `end_call`), sentence streaming, and
+barge-in abort — so you can A/B models by changing env vars only. Test any
+model's tool-calling reliability with `npm run chat` before putting it on
+the phone: booking accuracy (exact ISO slot passed to `book_meeting`,
+always ending via `end_call`) is where small/local models differ most.
+
 ## Configuration
 
 All via environment variables — see [.env.example](.env.example). Highlights:
 
+- `LLM_PROVIDER` (`anthropic` default | `openai`-compatible, see above).
 - `ANTHROPIC_MODEL` (default `claude-opus-5`) and `CLAUDE_EFFORT` (default
   `low` for voice latency; raise for more deliberate reasoning).
 - `CEO_NAME`, `COMPANY_NAME`, `BOT_NAME`, business hours, timezone, meeting

@@ -29,10 +29,21 @@ export interface GoogleCalendarConfig {
 }
 
 export interface AppConfig {
+  /** Which conversation engine drives calls. */
+  llmProvider: 'anthropic' | 'openai';
   anthropic: {
     model: string;
     effort: EffortLevel;
     maxTokens: number;
+  };
+  /**
+   * OpenAI-compatible endpoint — real OpenAI, or any compatible server
+   * (Ollama, vLLM, Groq, ...). Present when llmProvider is 'openai'.
+   */
+  openai?: {
+    baseUrl: string;
+    apiKey: string;
+    model: string;
   };
   bot: {
     /** Name the assistant introduces itself with. */
@@ -107,12 +118,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     google = { clientEmail, privateKey, calendarId };
   }
 
+  const llmProvider = env.LLM_PROVIDER === 'openai' ? 'openai' : 'anthropic';
+  let openai: AppConfig['openai'];
+  if (llmProvider === 'openai') {
+    if (!env.OPENAI_MODEL) {
+      throw new Error(
+        'LLM_PROVIDER=openai requires OPENAI_MODEL (and usually OPENAI_BASE_URL for self-hosted servers)',
+      );
+    }
+    openai = {
+      baseUrl: env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+      // Local servers (Ollama, vLLM without auth) ignore the key but the
+      // client requires one.
+      apiKey: env.OPENAI_API_KEY ?? 'not-needed',
+      model: env.OPENAI_MODEL,
+    };
+  }
+
   return {
+    llmProvider,
     anthropic: {
       model: env.ANTHROPIC_MODEL ?? 'claude-opus-5',
       effort,
       maxTokens: parseIntWithDefault(env.CLAUDE_MAX_TOKENS, 2048),
     },
+    openai,
     bot: {
       botName: env.BOT_NAME ?? 'Riley',
       ceoName: env.CEO_NAME ?? 'the CEO',

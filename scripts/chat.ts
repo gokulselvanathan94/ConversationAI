@@ -9,11 +9,11 @@ import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { loadConfig } from '../src/config.js';
 import { createCalendar } from '../src/calendar/index.js';
-import { CallAgent } from '../src/agent/engine.js';
+import { createEngine } from '../src/agent/index.js';
 
 const cfg = loadConfig();
 const calendar = createCalendar(cfg);
-const agent = new CallAgent(cfg, calendar, {
+const agent = createEngine(cfg, calendar, {
   callerNumber: '+15550100999',
   startedAtIso: new Date().toISOString(),
 });

@@ -38,6 +38,22 @@ test('invalid effort falls back to low; invalid times fall back to defaults', ()
   assert.equal(cfg.scheduling.businessStart, '09:00');
 });
 
+test('llm provider defaults to anthropic; openai requires a model', () => {
+  assert.equal(loadConfig({}).llmProvider, 'anthropic');
+  assert.throws(() => loadConfig({ LLM_PROVIDER: 'openai' }));
+  const cfg = loadConfig({ LLM_PROVIDER: 'openai', OPENAI_MODEL: 'qwen2.5:32b' });
+  assert.equal(cfg.llmProvider, 'openai');
+  assert.equal(cfg.openai?.model, 'qwen2.5:32b');
+  assert.equal(cfg.openai?.baseUrl, 'https://api.openai.com/v1');
+  const local = loadConfig({
+    LLM_PROVIDER: 'openai',
+    OPENAI_MODEL: 'llama3.3:70b',
+    OPENAI_BASE_URL: 'http://gpu-box:11434/v1',
+  });
+  assert.equal(local.openai?.baseUrl, 'http://gpu-box:11434/v1');
+  assert.equal(local.openai?.apiKey, 'not-needed');
+});
+
 test('google provider requires credentials', () => {
   assert.throws(() => loadConfig({ CALENDAR_PROVIDER: 'google' }));
   const cfg = loadConfig({

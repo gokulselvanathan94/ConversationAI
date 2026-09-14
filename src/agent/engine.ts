@@ -4,6 +4,7 @@ import type { CalendarProvider } from '../calendar/index.js';
 import { buildGreeting, buildSystemPrompt, type CallContext } from './prompts.js';
 import { buildTools, ToolExecutor, type CallOutcome } from './tools.js';
 import { SentenceAssembler } from './sentences.js';
+import type { ConversationEngine, TranscriptEntry } from './types.js';
 import { createLogger, type Logger } from '../logger.js';
 
 const MAX_LOOP_ITERATIONS = 8;
@@ -16,7 +17,7 @@ type MessageStreamT = ReturnType<Anthropic['messages']['stream']>;
  * for barge-in, and reports the call outcome (hang up / transfer) decided by
  * the model through the end_call tool.
  */
-export class CallAgent {
+export class CallAgent implements ConversationEngine {
   private readonly client: Anthropic;
   private readonly system: string;
   private readonly tools: Anthropic.Tool[];
@@ -49,9 +50,27 @@ export class CallAgent {
     return this.executor.outcome;
   }
 
-  /** Full transcript so far (for logging / the UUI data dip). */
-  get history(): ReadonlyArray<Anthropic.MessageParam> {
-    return this.messages;
+  /** Flattened transcript so far (for logging / the UUI data dip). */
+  transcript(): TranscriptEntry[] {
+    const out: TranscriptEntry[] = [];
+    for (const msg of this.messages) {
+      if (typeof msg.content === 'string') {
+        out.push({ role: msg.role, text: msg.content });
+        continue;
+      }
+      for (const block of msg.content) {
+        if (block.type === 'text') {
+          out.push({ role: msg.role, text: block.text });
+        } else if (block.type === 'tool_use') {
+          out.push({ role: 'tool', text: `${block.name} ${JSON.stringify(block.input)}` });
+        } else if (block.type === 'tool_result') {
+          const content =
+            typeof block.content === 'string' ? block.content : JSON.stringify(block.content);
+          out.push({ role: 'tool_result', text: content });
+        }
+      }
+    }
+    return out;
   }
 
   /** Barge-in: stop generating immediately. Safe to call at any time. */
