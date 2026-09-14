@@ -50,13 +50,21 @@ export interface AppConfig {
   };
   server: {
     port: number;
+    /** WebSocket path the jambonz application connects to. */
+    wsPath: string;
+    /** Shared secret for GET /context/:token (Genesys data action). */
+    contextApiKey?: string;
+    /** Directory where per-call transcript records are appended (JSONL). */
+    callLogDir: string;
   };
   genesys: {
     /**
-     * SIP URI template for handing a call into Genesys Cloud via the BYOC
+     * SIP URI for handing a call into Genesys Cloud via the BYOC
      * Cloud trunk, e.g. "sip:+15551230000@example.byoc.mypurecloud.com".
      */
     transferSipUri: string;
+    /** 2-hex-digit UUI protocol discriminator; must match the trunk setting. */
+    uuiProtocolDiscriminator: string;
   };
 }
 
@@ -123,9 +131,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     calendar: { provider, google },
     server: {
       port: parseIntWithDefault(env.PORT, 3000),
+      wsPath: env.JAMBONZ_WS_PATH ?? '/assistant',
+      contextApiKey: env.CONTEXT_API_KEY || undefined,
+      callLogDir: env.CALL_LOG_DIR ?? 'call-logs',
     },
     genesys: {
       transferSipUri: env.GENESYS_TRANSFER_SIP_URI ?? '',
+      uuiProtocolDiscriminator: /^[0-9a-fA-F]{2}$/.test(env.UUI_PROTOCOL_DISCRIMINATOR ?? '')
+        ? (env.UUI_PROTOCOL_DISCRIMINATOR as string).toLowerCase()
+        : '00',
     },
   };
 }
